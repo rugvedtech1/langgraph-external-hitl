@@ -1,0 +1,67 @@
+# Release workflow (Trusted Publishing / OIDC - no API tokens stored anywhere).
+# One-time setup (Part 9): create the GitHub environments "testpypi" and "pypi" (add required
+# reviewers to "pypi"), and register this repository + workflow file as a *pending* trusted
+# publisher on https://test.pypi.org and https://pypi.org for project "langgraph-external-hitl".
+name: Publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "Where to publish"
+        required: true
+        default: testpypi
+        type: choice
+        options: [testpypi, pypi]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install --upgrade build twine
+      - run: python -m build
+      - run: python -m twine check --strict dist/*
+      - name: No secrets or databases in distributions
+        run: |
+          ! (python -m zipfile -l dist/*.whl; tar tzf dist/*.tar.gz) | grep -E '(^|/)\.env($|\.)|\.db($|-)'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish-testpypi:
+    if: inputs.target == 'testpypi'
+    needs: build
+    runs-on: ubuntu-latest
+    environment: testpypi
+    permissions:
+      id-token: write          # OIDC for Trusted Publishing (job-scoped)
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+
+  publish-pypi:
+    if: inputs.target == 'pypi'
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi          # protect with required reviewers
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1   # also uploads PEP 740 attestations

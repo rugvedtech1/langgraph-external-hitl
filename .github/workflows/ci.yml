@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "0 5 * * 1"   # weekly canary against newest dependency releases
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  LANGGRAPH_STRICT_MSGPACK: "true"
+  PYTHONUTF8: "1"
+
+jobs:
+  test:
+    name: ${{ matrix.os }} / py${{ matrix.python }} / ${{ matrix.deps }}
+    runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.experimental }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # primary support
+          - { os: ubuntu-latest,  python: "3.12", deps: highest, experimental: false }
+          - { os: ubuntu-latest,  python: "3.13", deps: highest, experimental: false }
+          # proves the declared minimum versions (pins in ci/min-constraints.txt)
+          - { os: ubuntu-latest,  python: "3.12", deps: minimum, experimental: false }
+          # different file locking / permissions
+          - { os: macos-latest,   python: "3.12", deps: highest, experimental: false }
+          # not yet verified: allowed to fail until green
+          - { os: windows-latest, python: "3.12", deps: highest, experimental: true }
+          # LangGraph does not list 3.14 yet
+          - { os: ubuntu-latest,  python: "3.14", deps: highest, experimental: true }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Create venv
+        run: uv venv --python ${{ matrix.python }}
+      - name: Build wheel
+        run: uv build --wheel --out-dir dist
+      - name: Install wheel with extras (deps=${{ matrix.deps }})
+        shell: bash
+        run: |
+          if [ "${{ matrix.deps }}" = "minimum" ]; then C="-c ci/min-constraints.txt"; else C=""; fi
+          uv pip install $C "$(ls dist/*.whl)[all]" \
+            "pytest>=8" "pytest-cov>=5" "hypothesis>=6.100" "build>=1.2" "twine>=5"
+      - name: Show resolved versions
+        run: uv pip list
+      - name: Tests (against the installed wheel) with coverage gate
+        run: uv run --no-project python -m pytest -q --cov --cov-report=term-missing
+
+  packaging:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv venv --python 3.12
+      - run: uv pip install build twine
+      - run: uv run --no-project python -m build
+      - run: uv run --no-project twine check --strict dist/*
+      - name: No secrets in distributions
+        run: |
+          ! (unzip -l dist/*.whl; tar tzf dist/*.tar.gz) | grep -E '(^|/)\.env($|\.)|\.db($|-)'
+      - name: Core-only install has zero dependencies
+        run: |
+          python -m venv /tmp/core && /tmp/core/bin/pip install dist/*.whl
+          test "$(/tmp/core/bin/pip list --format=freeze | grep -v -E '^(pip|setuptools)=' | wc -l)" = "1"
+          /tmp/core/bin/python -c "import langgraph_external_hitl as h; print(h.__version__)"

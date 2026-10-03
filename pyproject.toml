@@ -1,0 +1,75 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "langgraph-external-hitl"
+version = "0.6.0"
+description = "Secure external human-in-the-loop approvals (Telegram, N options, one-time account connection) for LangGraph interrupts"
+readme = "README.md"
+requires-python = ">=3.12"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Rugved Kulkarni" }]
+keywords = ["langgraph", "human-in-the-loop", "hitl", "telegram", "approval", "interrupt"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Typing :: Typed",
+]
+dependencies = []  # core is standard-library only
+
+[project.scripts]
+langgraph-hitl = "langgraph_external_hitl.cli:main"
+
+[project.optional-dependencies]
+telegram = ["httpx>=0.27,<1"]
+langgraph = [
+  "langgraph>=1.2,<2",
+  "langgraph-checkpoint-sqlite>=3.1,<4",
+  "aiosqlite>=0.20",
+]
+all = ["langgraph-external-hitl[telegram,langgraph]"]
+
+[dependency-groups]
+dev = ["pytest>=8", "pytest-cov>=5", "hypothesis>=6.100", "build>=1.2", "twine>=5"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/langgraph_external_hitl"]
+
+# Explicit allowlist: never rely on .gitignore to keep secrets out of the sdist.
+[tool.hatch.build.targets.sdist]
+include = [
+  "/src",
+  "/tests",
+  "/examples",
+  "/.github",
+  "/README.md",
+  "/LICENSE",
+  "/CHANGELOG.md",
+  "/SECURITY.md",
+  "/ci",
+  "/pyproject.toml",
+]
+exclude = ["**/__pycache__", "**/*.db", "**/*.db-*", "**/.env", "**/.env.*", "**/.hitl", "**/secrets.env"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--import-mode=importlib"
+markers = ["posix_only: requires POSIX file permissions"]
+filterwarnings = [
+  # legacy API still covered by the 0.2/0.3 compatibility tests
+  "ignore:HitlBridge.start\\(\\) is deprecated:DeprecationWarning",
+]
+
+[tool.coverage.run]
+source = ["langgraph_external_hitl"]
+branch = true
+
+[tool.coverage.report]
+fail_under = 90
+show_missing = true
+exclude_also = ["if TYPE_CHECKING:", "pragma: no cover", "\\.\\.\\."]
