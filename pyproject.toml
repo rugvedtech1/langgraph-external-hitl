@@ -22,6 +22,12 @@ classifiers = [
 ]
 dependencies = []  # core is standard-library only
 
+[project.urls]
+Homepage = "https://github.com/rugvedtech1/langgraph-external-hitl"
+Source = "https://github.com/rugvedtech1/langgraph-external-hitl"
+Issues = "https://github.com/rugvedtech1/langgraph-external-hitl/issues"
+Changelog = "https://github.com/rugvedtech1/langgraph-external-hitl/blob/main/CHANGELOG.md"
+
 [project.scripts]
 langgraph-hitl = "langgraph_external_hitl.cli:main"
 

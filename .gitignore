@@ -5,3 +5,8 @@ dist/
 __pycache__/
 .pytest_cache/
 .hitl/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.hypothesis/
