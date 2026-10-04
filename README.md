@@ -1,4 +1,5 @@
-<img width="4484" height="2904" alt="test" src="https://github.com/user-attachments/assets/1906322b-91ff-4bae-808c-383a895a2c23" />
+<img width="1326" height="1186" alt="icorn" src="https://github.com/user-attachments/assets/f0470a70-205b-427e-98ba-7c785bba56ac" />
+
 
 # langgraph-external-hitl
 
