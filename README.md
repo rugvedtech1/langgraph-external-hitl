@@ -1,6 +1,4 @@
-![Uploading icorn.png…]()
-
-
+<img width="4484" height="2904" alt="test" src="https://github.com/user-attachments/assets/1906322b-91ff-4bae-808c-383a895a2c23" />
 
 # langgraph-external-hitl
 
